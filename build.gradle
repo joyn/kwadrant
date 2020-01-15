@@ -1,0 +1,51 @@
+plugins {
+    id 'java'
+    id 'java-gradle-plugin'
+    id 'org.jetbrains.kotlin.jvm' version '1.3.41'
+    id 'org.jetbrains.kotlin.kapt' version '1.3.61'
+}
+
+gradlePlugin {
+    plugins {
+        create("kwadrant") {
+            id = "de.joyn.kwadrant"
+            implementationClass = "de.joyn.kwadrant.Kwadrant"
+        }
+    }
+}
+
+group 'de.joyn'
+version '0.1'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+
+    testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
+    testImplementation group: 'junit', name: 'junit', version: '4.12'
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+task deploy(type: Copy) {
+    def properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    def targetDir = properties.getProperty('deploy.target.dir')
+
+    from file("$buildDir/libs/kwadrant-${version}.jar")
+    into (targetDir)
+}
+
+assemble.dependsOn clean
+
+deploy.dependsOn assemble
