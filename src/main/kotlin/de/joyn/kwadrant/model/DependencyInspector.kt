@@ -43,12 +43,6 @@ class DependencyInspector {
     }
 
     fun getDuplicatedParents(kwadrant: KwadrantInfo, rootProject: Project) = kwadrant.run {
-        /*
-        val directParents = kwadrant.local.projectDependencies
-        val transitiveParents = directParents.map {
-            it to KwadrantInfo.create(it.dependencyProject, rootProject).parent.projects
-        }
-         */
         val directParents = kwadrant.local.projectDependencies
         val transitiveParents = kwadrant.parent.projects.map {
             it to KwadrantInfo.create(it, rootProject).local.projectDependencies
