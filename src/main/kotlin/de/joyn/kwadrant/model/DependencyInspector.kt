@@ -5,9 +5,13 @@ import org.gradle.api.artifacts.Dependency
 import org.gradle.api.artifacts.ExternalModuleDependency
 import org.gradle.api.internal.artifacts.dependencies.DefaultProjectDependency
 
+typealias DependencyWithIncludingProjects = Pair<Dependency, Set<Project>>
+typealias ExternalDependencyWithIncludingProject = Pair<ExternalModuleDependency, Project>
+typealias ProjectWithDuplicatedParentProjects = Pair<Project, Set<DefaultProjectDependency>>
+
 class DependencyInspector {
 
-    fun getDuplicatedDependencies(kwadrant: KwadrantInfo):  Set<Pair<Dependency, Set<Project>>> =
+    fun getDuplicatedDependencies(kwadrant: KwadrantInfo):  Set<DependencyWithIncludingProjects> =
         kwadrant.local.libDependencies.fold(mutableSetOf()) { acc, dep ->
             val parentDeps = kwadrant.parent.libDependencies.filter { (_, parentDeps) ->
                 parentDeps.contains(dep)
@@ -20,7 +24,7 @@ class DependencyInspector {
             acc
         }
 
-    fun getVersionMisalignedDependencies(rootProject: Project): Set<Pair<ExternalModuleDependency, Project>> = with(
+    fun getVersionMisalignedDependencies(rootProject: Project): Set<ExternalDependencyWithIncludingProject> = with(
         rootProject.allprojects.map {
             it to KwadrantInfo.create(it, rootProject)
         }.map {
@@ -46,7 +50,7 @@ class DependencyInspector {
     fun getDuplicatedParents(
         kwadrant: KwadrantInfo,
         rootProject: Project
-    ): Set<Pair<Project, List<DefaultProjectDependency>>> = kwadrant.run {
+    ): Set<ProjectWithDuplicatedParentProjects> = kwadrant.run {
         val directParents = kwadrant.local.projectDependencies
         val transitiveParents = kwadrant.parent.projects.map {
             it to KwadrantInfo.create(it, rootProject).local.projectDependencies
@@ -56,7 +60,7 @@ class DependencyInspector {
                 parentParents.contains(it)
             }
         }.map { (parent, parentParents) ->
-            parent to parentParents.filter { directParents.contains(it) }
+            parent to parentParents.filter { directParents.contains(it) }.toSet()
         }.toSet()
     }
 
