@@ -23,6 +23,7 @@ data class KwadrantInfo(val project: Project, val local: Local, val parent: Pare
         val apiDependencies: DependencySet,
         val implDependencies: DependencySet,
         val libDependencies: Set<DefaultExternalModuleDependency>,
+        val projectDependencies: Set<DefaultProjectDependency>,
         private val integrationDependencies: Map<IntegrationType, DependencySet>,
         private val artifactDependencies: Map<ArtifactType, DependencySet>
     )
@@ -48,6 +49,7 @@ data class KwadrantInfo(val project: Project, val local: Local, val parent: Pare
                     apiDependencies = local.apiDependencies,
                     implDependencies = local.implDependencies,
                     libDependencies = local.libDependencies,
+                    projectDependencies = local.projectDependencies,
                     integrationDependencies = local.integrationDependencies,
                     artifactDependencies = local.artifactDependencies
                 ),

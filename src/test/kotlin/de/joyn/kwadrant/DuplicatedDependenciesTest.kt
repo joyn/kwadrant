@@ -33,4 +33,5 @@ class DuplicatedDependenciesTest {
         assertEquals(commonDep, duplicatedDep)
         assertEquals(duplicatingProjects, setOf(firstLevelChild))
     }
+
 }
