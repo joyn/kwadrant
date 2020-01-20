@@ -1,14 +1,15 @@
 # Kwadrant
 
-## A Gradle project build optimization tool
+## Gradle Project Multi Module Optimization Tool
 
-#### **How to build locally**
+#### **How to build and deploy locally**
 
-- Add a `local.properties` file in the root directory of this project
-- Specify a directory path in the target project and add it as `deploy.target.dir` property in the `local.properties` file
-- Run the `deploy` task
-- Add `apply plugin: 'de.joyn.kwadrant'` in the target project top level `build.gradle`
-- Add `classpath files("./libs/kwadrant-$kwadrant_version.jar")` (current version is `0.1`) in the target project top level `build.gradle` under dependencies
+1. Add a `local.properties` file in the root directory of this project
+2. Specify a directory path in the target project and add it as `deploy.target.dir` property in the `local.properties` file
+3. Run the `deploy` task
+4. Add `apply plugin: 'de.joyn.kwadrant'` in the target project top level `build.gradle`
+5. Add `classpath files("${deploy_target_dir_path}/kwadrant-${kwadrant_version}.jar")` (current version is `0.1`) in the target project top level `build.gradle` under dependencies
+6. Run the `deploy` task which builds the project and copies the resulting `jar` into the target path in the target project
 
 #### **Tasks**
 
