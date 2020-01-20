@@ -16,7 +16,7 @@ open class DuplicatedParentsTask : KwadrantTask() {
                 val duplicatedParents = inspector.getDuplicatedParents(it, rootProject)
                 val result = when (duplicatedParents.isNotEmpty()) {
                     true -> duplicatedParents.map { (parent, duplicatedParents) ->
-                        "${parent.shortName()} is already contained in ${duplicatedParents.shortString()}"
+                        "parent ${parent.shortName()} already contains ${duplicatedParents.shortString()}"
                     }
                     false -> listOf("-")
                 }
