@@ -32,12 +32,6 @@ data class KwadrantInfo(val project: Project, val local: Local, val parent: Pare
 
     data class Parent(
         val projects: Set<ParentProject>
-        // val apiDependencies: Set<ProjectWithDependencies>,
-        // val implDependencies: Set<ProjectWithDependencies>,
-        // val projectDependencies: Set<Pair<Project, Set<DefaultProjectDependency>>>,
-        // val libDependencies: Set<Pair<Project, Set<DefaultExternalModuleDependency>>>,
-        // private val integrationDependencies: Map<IntegrationType, Set<ProjectWithDependencies>>,
-        // private val artifactDependencies: Map<ArtifactType, Set<ProjectWithDependencies>>
     )
 
     data class ParentProject(
@@ -119,52 +113,6 @@ private class ParentMapper(project: Project, rootProject: Project) {
     }
 
 }
-
-/*
-private class ParentMapper(project: Project, rootProject: Project) {
-
-    val integrationDependenciesParents: Map<IntegrationType, Set<Pair<Project, DependencySet>>>
-    val artifactDependenciesParents: Map<ArtifactType, Set<Pair<Project, DependencySet>>>
-
-    val apiDependenciesParents: Set<ProjectWithDependencies>
-    val implDependenciesParents: Set<ProjectWithDependencies>
-    val projectDependenciesParents: Set<Pair<Project, Set<DefaultProjectDependency>>>
-    val libDependenciesParents: Set<Pair<Project, Set<DefaultExternalModuleDependency>>>
-
-    val parentProjects: Set<Project> = getParentDepsTransitively(project, rootProject)
-
-    init {
-        integrationDependenciesParents = mutableMapOf<IntegrationType, Set<ProjectWithDependencies>>().apply {
-            put(
-                IntegrationType.API,
-                parentProjects.map { it to it.getDepsByIntType(IntegrationType.API) }.toSet()
-            )
-            put(
-                IntegrationType.IMPLEMENTATION,
-                parentProjects.map { it to it.getDepsByIntType(IntegrationType.IMPLEMENTATION) }.toSet()
-            )
-        }
-        artifactDependenciesParents = mutableMapOf<ArtifactType, Set<Pair<Project, Set<Dependency>>>>().apply {
-            put(
-                ArtifactType.PROJECT,
-                parentProjects.map { it to it.getDepsByArtifact(ArtifactType.PROJECT) }.toSet()
-            )
-            put(
-                ArtifactType.LIB,
-                parentProjects.map { it to it.getDepsByArtifact(ArtifactType.LIB) }.toSet()
-            )
-        }
-        apiDependenciesParents = integrationDependenciesParents[IntegrationType.API] ?: emptySet()
-        implDependenciesParents = integrationDependenciesParents[IntegrationType.IMPLEMENTATION] ?: emptySet()
-        @Suppress("UNCHECKED_CAST")
-        projectDependenciesParents = artifactDependenciesParents[ArtifactType.PROJECT]
-                as Set<Pair<Project, Set<DefaultProjectDependency>>>
-        @Suppress("UNCHECKED_CAST")
-        libDependenciesParents = artifactDependenciesParents[ArtifactType.LIB]
-                as Set<Pair<Project, Set<DefaultExternalModuleDependency>>>
-    }
-}
- */
 
 private fun Project.getDepsByIntType(integrationType: IntegrationType) =
     with(integrationType.directive) {
