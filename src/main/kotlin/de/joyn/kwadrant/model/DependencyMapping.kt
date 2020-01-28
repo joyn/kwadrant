@@ -1,12 +1,11 @@
 package de.joyn.kwadrant.model
 
 import de.joyn.kwadrant.util.DependencySet
+import de.joyn.kwadrant.util.ProjectDependencySet
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Dependency
 import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency
 import org.gradle.api.internal.artifacts.dependencies.DefaultProjectDependency
-
-typealias ProjectWithDependencies = Pair<Project, DependencySet>
 
 enum class IntegrationType(val directive: String) {
     API("api"),
@@ -20,54 +19,53 @@ enum class ArtifactType {
 data class KwadrantInfo(val project: Project, val local: Local, val parent: Parent) {
 
     data class Local(
-        val apiDependencies: DependencySet,
-        val implDependencies: DependencySet,
-        val libDependencies: Set<DefaultExternalModuleDependency>,
-        val projectDependencies: Set<DefaultProjectDependency>,
         private val integrationDependencies: Map<IntegrationType, DependencySet>,
         private val artifactDependencies: Map<ArtifactType, DependencySet>
-    )
+    ) {
+        val apiDependencies: DependencySet = integrationDependencies[IntegrationType.API] ?: emptySet()
+        val implDependencies: DependencySet = integrationDependencies[IntegrationType.IMPLEMENTATION] ?: emptySet()
+        val projectDependencies: ProjectDependencySet =
+            artifactDependencies[ArtifactType.PROJECT]?.filterIsInstance(DefaultProjectDependency::class.java)?.toSet()
+                ?: emptySet()
+        val libDependencies: DependencySet = artifactDependencies[ArtifactType.LIB] ?: emptySet()
+    }
 
     data class Parent(
-        val projects: Set<Project>,
-        val apiDependencies: Set<ProjectWithDependencies>,
-        val implDependencies: Set<ProjectWithDependencies>,
-        val projectDependencies: Set<Pair<Project, Set<DefaultProjectDependency>>>,
-        val libDependencies: Set<Pair<Project, Set<DefaultExternalModuleDependency>>>,
-        private val integrationDependencies: Map<IntegrationType, Set<ProjectWithDependencies>>,
-        private val artifactDependencies: Map<ArtifactType, Set<ProjectWithDependencies>>
+        val projects: Set<ParentProject>
+        // val apiDependencies: Set<ProjectWithDependencies>,
+        // val implDependencies: Set<ProjectWithDependencies>,
+        // val projectDependencies: Set<Pair<Project, Set<DefaultProjectDependency>>>,
+        // val libDependencies: Set<Pair<Project, Set<DefaultExternalModuleDependency>>>,
+        // private val integrationDependencies: Map<IntegrationType, Set<ProjectWithDependencies>>,
+        // private val artifactDependencies: Map<ArtifactType, Set<ProjectWithDependencies>>
     )
 
+    data class ParentProject(
+        val project: Project,
+        private val integrationDependencies: Map<IntegrationType, DependencySet>,
+        private val artifactDependencies: Map<ArtifactType, DependencySet>
+    ) {
+        val apiDependencies: DependencySet = integrationDependencies[IntegrationType.API] ?: emptySet()
+        val implDependencies: DependencySet = integrationDependencies[IntegrationType.IMPLEMENTATION] ?: emptySet()
+        val projectDependencies: DependencySet = artifactDependencies[ArtifactType.PROJECT] ?: emptySet()
+        val libDependencies: DependencySet = artifactDependencies[ArtifactType.LIB] ?: emptySet()
+    }
+
     companion object {
-        fun create(project: Project, rootProject: Project) = with(
-            LocalMapper(project) to ParentMapper(project, rootProject)
-        ) {
-            val (local, parent) = this
-            KwadrantInfo(
-                project,
-                Local(
-                    apiDependencies = local.apiDependencies,
-                    implDependencies = local.implDependencies,
-                    libDependencies = local.libDependencies,
-                    projectDependencies = local.projectDependencies,
-                    integrationDependencies = local.integrationDependencies,
-                    artifactDependencies = local.artifactDependencies
-                ),
-                Parent(
-                    projects = parent.parentProjects,
-                    apiDependencies = parent.apiDependenciesParents,
-                    implDependencies = parent.implDependenciesParents,
-                    projectDependencies = parent.projectDependenciesParents,
-                    libDependencies = parent.libDependenciesParents,
-                    integrationDependencies = parent.integrationDependenciesParents,
-                    artifactDependencies = parent.artifactDependenciesParents
+        fun create(project: Project, rootProject: Project) =
+            (LocalMapper(project) to ParentMapper(project, rootProject)).let { (localMapper, parentMapper) ->
+                KwadrantInfo(
+                    project,
+                    Local(
+                        integrationDependencies = localMapper.integrationDependencies,
+                        artifactDependencies = localMapper.artifactDependencies
+                    ),
+                    Parent(projects = parentMapper.parents)
                 )
-            )
-        }
+            }
     }
 
 }
-
 
 private class LocalMapper(project: Project) {
 
@@ -94,11 +92,35 @@ private class LocalMapper(project: Project) {
         projectDependencies = artifactDependencies[ArtifactType.PROJECT] as Set<DefaultProjectDependency>
         @Suppress("UNCHECKED_CAST")
         libDependencies = artifactDependencies[ArtifactType.LIB] as Set<DefaultExternalModuleDependency>
-
     }
 
 }
 
+private class ParentMapper(project: Project, rootProject: Project) {
+
+    val parents: Set<KwadrantInfo.ParentProject>
+
+    init {
+        parents = getParentDepsTransitively(project, rootProject).map { p ->
+            val integrationDependencies = mutableMapOf<IntegrationType, DependencySet>().apply {
+                put(IntegrationType.API, p.getDepsByIntType(IntegrationType.API))
+                put(IntegrationType.IMPLEMENTATION, p.getDepsByIntType(IntegrationType.IMPLEMENTATION))
+            }.toMap()
+            val artifactDependencies = mutableMapOf<ArtifactType, Set<Dependency>>().apply {
+                put(ArtifactType.PROJECT, p.getDepsByArtifact(ArtifactType.PROJECT))
+                put(ArtifactType.LIB, p.getDepsByArtifact(ArtifactType.LIB))
+            }
+            KwadrantInfo.ParentProject(
+                project = p,
+                integrationDependencies = integrationDependencies,
+                artifactDependencies = artifactDependencies
+            )
+        }.toSet()
+    }
+
+}
+
+/*
 private class ParentMapper(project: Project, rootProject: Project) {
 
     val integrationDependenciesParents: Map<IntegrationType, Set<Pair<Project, DependencySet>>>
@@ -142,6 +164,7 @@ private class ParentMapper(project: Project, rootProject: Project) {
                 as Set<Pair<Project, Set<DefaultExternalModuleDependency>>>
     }
 }
+ */
 
 private fun Project.getDepsByIntType(integrationType: IntegrationType) =
     with(integrationType.directive) {
@@ -164,7 +187,7 @@ private fun Set<Dependency>.filterByArtifactType(artifactType: ArtifactType) =
     )
 
 private fun getParentDepsTransitively(prj: Project, root: Project, acc: Set<Project> = mutableSetOf()): Set<Project> =
-    with (prj.getDepsByArtifact(ArtifactType.PROJECT)) {
+    with(prj.getDepsByArtifact(ArtifactType.PROJECT)) {
         val directProjectDeps = this
         when (isEmpty()) {
             true -> acc

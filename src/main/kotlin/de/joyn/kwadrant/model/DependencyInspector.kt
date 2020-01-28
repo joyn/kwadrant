@@ -13,13 +13,20 @@ class DependencyInspector {
 
     fun getDuplicatedDependencies(kwadrant: KwadrantInfo):  Set<DependencyWithIncludingProjects> =
         kwadrant.local.libDependencies.fold(mutableSetOf()) { acc, dep ->
-            val parentDeps = kwadrant.parent.libDependencies.filter { (_, parentDeps) ->
-                parentDeps.contains(dep)
-            }.map { (parent, _) ->
-                parent
-            }.toSet()
-            if (parentDeps.isNotEmpty()) {
-                acc.add(dep to parentDeps)
+            kwadrant.parent.projects.forEach { parent ->
+                val localDeps = parent.libDependencies
+                if (localDeps.contains(dep)) {
+                    when (val existingEntry = acc.find { it.first == dep }) {
+                        null -> acc.add(dep to setOf(parent.project))
+                        else -> {
+                            acc.remove(existingEntry)
+                            val newSet = existingEntry.second.toMutableSet().apply {
+                                add(parent.project)
+                            }
+                            acc.add(dep to newSet)
+                        }
+                    }
+                }
             }
             acc
         }
@@ -34,13 +41,13 @@ class DependencyInspector {
         fold(mutableSetOf()) { acc, d ->
             val (project, localDeps) = d
             val misAlignedDuplicates = localDeps.filter { localD ->
-                this.map { it.second }.flatten().filter { allD ->
+                this.map { it.second }.flatten().any { allD ->
                     allD.group == localD.group && allD.name == localD.name && allD.version != localD.version
-                }.isNotEmpty()
+                }
             }
             if (misAlignedDuplicates.isNotEmpty()) {
                 misAlignedDuplicates.forEach {
-                    acc.add(it to project)
+                    acc.add((it as ExternalModuleDependency) to project)
                 }
             }
             acc
@@ -53,14 +60,14 @@ class DependencyInspector {
     ): Set<ProjectWithDuplicatedParentProjects> = kwadrant.run {
         val directParents = kwadrant.local.projectDependencies
         val transitiveParents = kwadrant.parent.projects.map {
-            it to KwadrantInfo.create(it, rootProject).local.projectDependencies
+            it to KwadrantInfo.create(it.project, rootProject).local.projectDependencies
         }
         transitiveParents.filter { (_, parentParents) ->
             directParents.any {
                 parentParents.contains(it)
             }
         }.map { (parent, parentParents) ->
-            parent to parentParents.filter { directParents.contains(it) }.toSet()
+            parent.project to parentParents.filter { directParents.contains(it) }.toSet()
         }.toSet()
     }
 
