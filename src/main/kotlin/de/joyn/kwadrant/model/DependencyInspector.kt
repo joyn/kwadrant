@@ -16,16 +16,7 @@ class DependencyInspector {
             kwadrant.parent.projects.forEach { parent ->
                 val localDeps = parent.libDependencies
                 if (localDeps.contains(dep)) {
-                    when (val existingEntry = acc.find { it.first == dep }) {
-                        null -> acc.add(dep to setOf(parent.project))
-                        else -> {
-                            acc.remove(existingEntry)
-                            val newSet = existingEntry.second.toMutableSet().apply {
-                                add(parent.project)
-                            }
-                            acc.add(dep to newSet)
-                        }
-                    }
+                    acc.putOrAdd(dep to parent.project)
                 }
             }
             acc
@@ -70,5 +61,19 @@ class DependencyInspector {
             parent.project to parentParents.filter { directParents.contains(it) }.toSet()
         }.toSet()
     }
+
+    private fun <T, V> MutableSet<Pair<T, Set<V>>>.putOrAdd(v: Pair<T, V>) =
+        when (val entry = find { it.first == v.first } ) {
+            null -> apply { add(v.first to setOf(v.second)) }
+            else -> {
+                remove(entry)
+                val newSet = entry.second.toMutableSet().apply {
+                    add(v.second)
+                }
+                apply {
+                    add(entry.copy(second = newSet))
+                }
+            }
+        }
 
 }

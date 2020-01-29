@@ -3,6 +3,7 @@ package de.joyn.kwadrant.model
 import de.joyn.kwadrant.buildProject
 import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 internal class DependencyInspectorTest {
@@ -94,6 +95,34 @@ internal class DependencyInspectorTest {
         assertEquals(1, duplicatedParents.size)
         val duplicatedParent = duplicatedParents.first()
         assertEquals(commonParent, duplicatedParent.dependencyProject)
+    }
+
+    @Test
+    fun `find multiple duplicated deps`() {
+        val rootProject = buildProject("root ")
+        val commonDependency = DefaultExternalModuleDependency("de.joyn", "kwadrant", "0.1")
+
+        val parentA = buildProject("parentA", rootProject,
+            libraryDependencies = setOf(commonDependency)
+        )
+        val parentB = buildProject("parentB", rootProject,
+            libraryDependencies = setOf(commonDependency)
+        )
+        val target = buildProject("target", rootProject,
+            libraryDependencies = setOf(commonDependency),
+            projectDependencies = setOf(parentA, parentB)
+        )
+        val kwadrant = KwadrantInfo.create(target, rootProject)
+
+        val inspector = DependencyInspector()
+        inspector.getDuplicatedDependencies(kwadrant).let { duplicationInfo ->
+            assertEquals(1, duplicationInfo.size)
+            val duplication = duplicationInfo.first()
+            val duplicatingProjects = duplication.second
+            assertEquals(2, duplicatingProjects.size)
+            assertTrue(duplicatingProjects.contains(parentA))
+            assertTrue(duplicatingProjects.contains(parentB))
+        }
     }
 
 }

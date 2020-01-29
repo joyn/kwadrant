@@ -23,6 +23,8 @@ internal class KwadrantInfoTest {
             val apiDeps = parent.projects.all { it.apiDependencies }
             val libDeps = parent.projects.all { it.libDependencies }
             assertTrue(parent.projects.isEmpty())
+            assertTrue(apiDeps.isEmpty())
+            assertTrue(libDeps.isEmpty())
         }
     }
 

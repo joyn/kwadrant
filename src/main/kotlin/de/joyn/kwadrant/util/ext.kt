@@ -17,5 +17,3 @@ fun ProjectCollection.shortString() = joinToString(prefix = "", postfix = "", se
 fun DependencySet.shortString() = map { it.shortId() }
 
 fun Dependency.shortId() = "$group:$name:$version"
-
-inline fun <V, T> Set<T>.flatAll(f: (T) -> Set<V>): Set<V> = map { f(it) }.flatten().toSet()
