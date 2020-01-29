@@ -13,13 +13,11 @@ class DependencyInspector {
 
     fun getDuplicatedDependencies(kwadrant: KwadrantInfo):  Set<DependencyWithIncludingProjects> =
         kwadrant.local.libDependencies.fold(mutableSetOf()) { acc, dep ->
-            val parentDeps = kwadrant.parent.libDependencies.filter { (_, parentDeps) ->
-                parentDeps.contains(dep)
-            }.map { (parent, _) ->
-                parent
-            }.toSet()
-            if (parentDeps.isNotEmpty()) {
-                acc.add(dep to parentDeps)
+            kwadrant.parent.projects.forEach { parent ->
+                val localDeps = parent.libDependencies
+                if (localDeps.contains(dep)) {
+                    acc.putOrAdd(dep to parent.project)
+                }
             }
             acc
         }
@@ -34,13 +32,13 @@ class DependencyInspector {
         fold(mutableSetOf()) { acc, d ->
             val (project, localDeps) = d
             val misAlignedDuplicates = localDeps.filter { localD ->
-                this.map { it.second }.flatten().filter { allD ->
+                this.map { it.second }.flatten().any { allD ->
                     allD.group == localD.group && allD.name == localD.name && allD.version != localD.version
-                }.isNotEmpty()
+                }
             }
             if (misAlignedDuplicates.isNotEmpty()) {
                 misAlignedDuplicates.forEach {
-                    acc.add(it to project)
+                    acc.add((it as ExternalModuleDependency) to project)
                 }
             }
             acc
@@ -53,15 +51,29 @@ class DependencyInspector {
     ): Set<ProjectWithDuplicatedParentProjects> = kwadrant.run {
         val directParents = kwadrant.local.projectDependencies
         val transitiveParents = kwadrant.parent.projects.map {
-            it to KwadrantInfo.create(it, rootProject).local.projectDependencies
+            it to KwadrantInfo.create(it.project, rootProject).local.projectDependencies
         }
         transitiveParents.filter { (_, parentParents) ->
             directParents.any {
                 parentParents.contains(it)
             }
         }.map { (parent, parentParents) ->
-            parent to parentParents.filter { directParents.contains(it) }.toSet()
+            parent.project to parentParents.filter { directParents.contains(it) }.toSet()
         }.toSet()
     }
+
+    private fun <T, V> MutableSet<Pair<T, Set<V>>>.putOrAdd(v: Pair<T, V>) =
+        when (val entry = find { it.first == v.first } ) {
+            null -> apply { add(v.first to setOf(v.second)) }
+            else -> {
+                remove(entry)
+                val newSet = entry.second.toMutableSet().apply {
+                    add(v.second)
+                }
+                apply {
+                    add(entry.copy(second = newSet))
+                }
+            }
+        }
 
 }
